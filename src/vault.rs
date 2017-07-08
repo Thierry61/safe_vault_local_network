@@ -41,6 +41,7 @@ use rust_sodium;
 use rust_sodium::crypto::sign;
 use std::env;
 use std::path::Path;
+use std::time::UNIX_EPOCH;
 
 pub const CHUNK_STORE_DIR: &'static str = "safe_vault_chunk_store";
 const DEFAULT_MAX_CAPACITY: u64 = 2 * 1024 * 1024 * 1024;
@@ -63,9 +64,12 @@ impl Vault {
             }
             Err(e) => return Err(From::from(e)),
         };
-        let builder = RoutingNode::builder()
-            .first(first_vault)
-            .deny_other_local_nodes();
+        let mut builder = RoutingNode::builder()
+            .first(first_vault);
+        // Don't deny other peers in same lan in local network
+        if !cfg!(feature = "local-network") {
+            builder = builder.deny_other_local_nodes();
+        }
         match Self::vault_with_config(builder, use_cache, config.clone()) {
             Ok(vault) => Ok(vault),
             Err(InternalError::ChunkStore(e)) => {
@@ -91,6 +95,12 @@ impl Vault {
             None => env::temp_dir(),
         };
         chunk_store_root.push(CHUNK_STORE_DIR);
+        if cfg!(feature = "local-network") {
+            info!("Use local-network feature");
+            // To allow several vaults on same station
+            let unix_time = UNIX_EPOCH.elapsed().unwrap();
+            chunk_store_root.push(format!("{:x}", unix_time.as_secs()));
+        }
 
         let routing_node = if use_cache {
             builder.cache(Box::new(Cache::new())).create()
