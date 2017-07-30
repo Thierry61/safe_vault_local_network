@@ -20,8 +20,11 @@ use rust_sodium::crypto::sign;
 use std::collections::BTreeSet;
 
 /// Default available number of operations per account.
-#[cfg(not(feature = "use-mock-crust"))]
+#[cfg(all(not(feature = "use-mock-crust"), not(feature = "local-network")))]
 pub const DEFAULT_MAX_OPS_COUNT: u64 = 500;
+#[cfg(all(not(feature = "use-mock-crust"), feature = "local-network"))]
+/// Default available number of operations per account.
+pub const DEFAULT_MAX_OPS_COUNT: u64 = 5_000_000;
 /// Default available number of mutations per account.
 #[cfg(feature = "use-mock-crust")]
 pub const DEFAULT_MAX_OPS_COUNT: u64 = 100;
